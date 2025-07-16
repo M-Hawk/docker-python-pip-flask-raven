@@ -1,73 +1,66 @@
 import unittest
-from app import app, db, Todo 
+from classes import Player, ComputerPlayer, Game
 
-class TodoTestCase(unittest.TestCase):
+
+# P2P TESTS
+class TestPlayer(unittest.TestCase):
 
     def setUp(self):
-        # Configure the app for testing
-        app.config['TESTING'] = True
-        # Use an in-memory SQLite database for tests
-        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
-        # Create the test client
-        self.app = app.test_client()
-        # Push the application context and create all tables
-        self.ctx = app.app_context()
-        self.ctx.push()
-        db.create_all()
+        self.player = Player("TestPlayer", 120, "Tracked", "Flipper", 25)
 
-    def tearDown(self):
-        # Cleanup the database and remove the app context
-        db.session.remove()
-        db.drop_all()
-        self.ctx.pop()
+    def test_getters(self):
+        self.assertEqual(self.player.get_name(), "TestPlayer")
+        self.assertEqual(self.player.get_health(), 120)
+        self.assertEqual(self.player.get_body_type(), "Tracked")
+        self.assertEqual(self.player.get_weapon(), "Flipper")
 
-    def test_home(self):
-        # Test that the home route ("/") returns a 200 OK status code.
-        response = self.app.get("/")
-        self.assertEqual(response.status_code, 200)
-        # Optionally, check for expected content in the rendered template.
-        self.assertIn(b"Todo", response.data)
+    def test_setters(self):
+        self.player.set_name("NewName")
+        self.assertEqual(self.player.get_name(), "NewName")
 
-    def test_add_todo(self):
-        # Test posting a new todo item using the "/add" route.
-        response = self.app.post("/add", data={"title": "Test Todo"}, follow_redirects=True)
-        self.assertEqual(response.status_code, 200)
-        # Verify that the new todo has been added to the database.
-        todo = Todo.query.filter_by(title="Test Todo").first()
-        self.assertIsNotNone(todo)
-        self.assertFalse(todo.complete)
+        self.player.set_age(30)  # no getter for age, so no assert here
 
-    def test_update_todo(self):
-        # Manually add a todo item to update.
-        todo = Todo(title="Update Test", complete=False)
-        db.session.add(todo)
-        db.session.commit()
-        todo_id = todo.id
+        self.player.set_body_type("Soft-Wheeled")
+        self.assertEqual(self.player.get_body_type(), "Soft-Wheeled")
 
-        # Toggle its 'complete' value by accessing the update route.
-        response = self.app.get(f"/update/{todo_id}", follow_redirects=True)
-        self.assertEqual(response.status_code, 200)
-        # Use Session.get() instead of Query.get()
-        updated_todo = db.session.get(Todo, todo_id)
-        self.assertTrue(updated_todo.complete)
+        self.player.set_weapon("Powersaw")
+        self.assertEqual(self.player.get_weapon(), "Powersaw")
 
-    def test_delete_todo(self):
-        # Manually add a todo item to delete.
-        todo = Todo(title="Delete Test", complete=False)
-        db.session.add(todo)
-        db.session.commit()
-        todo_id = todo.id
+    def test_damage(self):
+        self.player.damage(20)
+        self.assertEqual(self.player.get_health(), 100)
 
-        # Delete the todo using the delete route.
-        response = self.app.get(f"/delete/{todo_id}", follow_redirects=True)
-        self.assertEqual(response.status_code, 200)
-        # Use Session.get() instead of Query.get()
-        deleted_todo = db.session.get(Todo, todo_id)
-        self.assertIsNone(deleted_todo)
 
-    # def test_failure(self):
-    #     # Simulate a failure case
-    #     self.assertFalse(True, "This test should fail.")
+class TestComputerPlayer(unittest.TestCase):
 
-if __name__ == "__main__":
+    def test_computer_player_initialization(self):
+        bot = ComputerPlayer()
+        self.assertIn(bot.get_name(), ComputerPlayer.bot_names)
+        self.assertIn(bot.get_body_type(), ComputerPlayer.bot_body_type)
+        self.assertIn(bot.get_weapon(), ComputerPlayer.bot_weapon)
+        self.assertEqual(bot.get_health(), 120)
+
+
+class TestGame(unittest.TestCase):
+
+    def setUp(self):
+        self.game = Game()
+
+    def test_weap_weap_dmg(self):
+        self.assertEqual(self.game.weap_weap_dmg("Electrocutor", "Flipper"), 30)
+        self.assertEqual(self.game.weap_weap_dmg("Electrocutor", "Electrocutor"), 10)
+        self.assertEqual(self.game.weap_weap_dmg("Electrocutor", "Powersaw"), 20)
+
+    def test_weap_body_dmg(self):
+        self.assertEqual(self.game.weap_body_dmg("Electrocutor", "Tracked"), 30)
+        self.assertEqual(self.game.weap_body_dmg("Electrocutor", "Soft-Wheeled"), 10)
+        self.assertEqual(self.game.weap_body_dmg("Electrocutor", "Hard-Wheeled"), 20)
+
+# F2P TESTS
+
+
+
+
+# Runs when file is executed directly as above
+if __name__ == '__main__':
     unittest.main()
